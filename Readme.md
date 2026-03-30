@@ -19,6 +19,18 @@ stable compared to the original project and work with modern Python and Pyglet
 
 ## New in this release:
 
+* Added a paper-backed `Research Dual` mode. This is a Dual N-Back preset
+  inspired by Covey, Shucard, and Shucard (2019), which found that adaptive
+  n-back training produced more pronounced transfer to working-memory tasks
+  than a closely matched perceptual discrimination task, and linked the n-back
+  group's ERP changes to conflict monitoring and sequential mismatch
+  identification.
+* `Research Dual` keeps the usual Dual N-Back inputs but increases the rate of
+  near-match interference trials so the game more aggressively trains the
+  conflict-monitoring behavior discussed in the paper. This is an implementation
+  choice derived from the paper's interpretation, not a claim that the paper
+  tested Brain Workshop itself.
+
 * Elements on the screen scale depending on the window size, making it much more
   usable if you have a hidpi monitor.
 * Using a widescreen resolution causes items on the screen to be placed/scale properly
@@ -40,6 +52,39 @@ stable compared to the original project and work with modern Python and Pyglet
   `halign` is deprecated. Though to avoid breaking anything, we try `align` first
   and if that fails we fall back to using `halign`
 * Fix many more crashes and issues of Brain Workshop failing to launch
+
+## Paper-backed mode
+
+This fork now includes a dedicated `Research Dual` game mode in the `C`
+(`Choose Game Mode`) menu.
+
+What the paper reported:
+
+* Covey, T. J., Shucard, J. L., & Shucard, D. W. (2019). *Working memory
+  training and perceptual discrimination training impact overlapping and
+  distinct neurocognitive processes: Evidence from event-related potentials and
+  transfer of training gains*. *Cognition, 182*, 50-72.
+* Both groups trained for 20 sessions over about 4 weeks.
+* Both groups improved on cognitive control and fluid intelligence measures.
+* The adaptive n-back group showed more pronounced transfer on working-memory
+  tasks than the matched visual-search/perceptual-discrimination group.
+* The n-back group also showed an enhanced and earlier N2 response on a Letter
+  3-Back task, which the paper interprets as better conflict monitoring and
+  sequential mismatch identification.
+
+How this repository applies that finding:
+
+* `Research Dual` is still a Dual N-Back mode, so it fits naturally into Brain
+  Workshop instead of bolting on an unrelated lab task.
+* The mode raises the near-miss/interference rate, because that is the closest
+  existing Brain Workshop mechanic to the paper's interpretation of the
+  training effect.
+* Standard Dual mode is still available unchanged.
+
+Sources:
+
+* DOI: https://doi.org/10.1016/j.cognition.2018.08.012
+* PubMed abstract: https://pubmed.ncbi.nlm.nih.gov/30218913/
 
 
 ## Notes:

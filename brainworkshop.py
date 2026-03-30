@@ -371,6 +371,7 @@ USE_MUSIC_MANUAL = False
 #  9:'Triple Arithmetic',
 #  10:'Position',
 #  11:'Sound',
+#  13:'Research Dual',
 #  20:'P-C',
 #  21:'P-I',
 #  22:'C-A',
@@ -413,6 +414,15 @@ BACK_5 = 1
 BACK_6 = 1
 BACK_7 = 1
 BACK_8 = 1
+
+# Paper-backed Dual N-Back preset.
+# This repository includes a dedicated mode based on Covey, Shucard, &
+# Shucard (2019), which linked n-back training gains to conflict monitoring
+# and sequential mismatch identification. The mode uses the standard Dual
+# N-Back inputs, but raises the near-miss rate to emphasize interference
+# resolution without changing the scoring model.
+# Default: 0.5
+RESEARCH_MODE_INTERFERENCE_CHANCE = 0.5
 BACK_9 = 1
 
 # N-back level resetting:
@@ -1156,6 +1166,7 @@ class Mode:
                                  9:'TA',
                                  10:'Po',
                                  11:'Au',
+                                 13:'RD',
                                  12:'TCC',
                                  20:'PC',
                                  21:'PI',
@@ -1186,6 +1197,7 @@ class Mode:
                                  9:_('Triple Arithmetic'),
                                  10:_('Position'),
                                  11:_('Sound'),
+                                 13:_('Research Dual'),
                                  12:_('Tri Combination (Color)'),
                                  20:_('Position, Color'),
                                  21:_('Position, Image'),
@@ -1216,6 +1228,7 @@ class Mode:
                             9:['position1', 'arithmetic', 'color'],
                             10:['position1'],
                             11:['audio'],
+                            13:['position1', 'audio'],
                             12:['visvis', 'visaudio', 'color', 'audiovis', 'audio'],
                             20:['position1', 'color'],
                             21:['position1', 'image'],
@@ -1358,6 +1371,11 @@ class Mode:
         self.soundlist2 = []
 
         self.bt_sequence = []
+
+    def interference_chance(self):
+        if self.mode == 13:
+            return cfg.RESEARCH_MODE_INTERFERENCE_CHANCE
+        return cfg.CHANCE_OF_INTERFERENCE
 
     def enforce_standard_mode(self):
         self.back = default_nback_mode(self.mode)
@@ -2229,10 +2247,11 @@ class GameSelect(Menu):
         options = modalities[:]
         names = dict([(m, _("Use %s") % m) for m in modalities])
         names['position1'] = _("Use position")
-        options.extend(["Blank line", 'combination', "Blank line", 'variable',
+        options.extend(["Blank line", 'combination', 'research', "Blank line", 'variable',
             'crab', "Blank line", 'multi', 'multimode', 'Blank line',
             'selfpaced', "Blank line", 'interference'])
         names['combination'] = _('Combination N-back mode')
+        names['research'] = _('Research Dual preset (paper-backed)')
         names['variable'] = _('Use variable N-Back levels')
         names['crab'] = _('Crab-back mode (reverse order of sets of N stimuli)')
         names['multi'] = _('Simultaneous visual stimuli')
@@ -2251,6 +2270,7 @@ class GameSelect(Menu):
             interference_default = 3
         vals['interference'] = PercentCycler(values=interference_options, default=interference_default)
         vals['combination'] = 'visvis' in curmodes
+        vals['research'] = mode.mode == 13
         vals['variable'] = bool(cfg.VARIABLE_NBACK)
         vals['crab'] = bool(mode.flags[mode.mode]['crab'])
         vals['multi'] = Cycler(values=[1,2,3,4], default=mode.flags[mode.mode]['multi']-1)
@@ -2282,6 +2302,9 @@ class GameSelect(Menu):
         modes = [k for (k, v) in self.values.items() if v and not isinstance(v, Cycler)]
         crab = 'crab' in modes
         if 'variable' in modes:  modes.remove('variable')
+        research_mode = 'research' in modes
+        if research_mode:
+            modes.remove('research')
         if 'combination' in modes:
             modes.remove('combination')
             modes.extend(['visvis', 'visaudio', 'audiovis']) # audio should already be there
@@ -2300,6 +2323,8 @@ class GameSelect(Menu):
         candidates = candidates & set(range(0, 128))
         if len(candidates) == 1:
             candidate = list(candidates)[0] + base
+            if research_mode and candidate == 2 and base == 0:
+                candidate = 13
             if candidate in mode.modalities:
                 self.newmode = candidate
             else: self.newmode = False
@@ -2331,36 +2356,59 @@ class GameSelect(Menu):
             self.values['image']      = False
             self.values['audio2']     = False
             self.values['audio']      = True
+            self.values['research']   = False
             self.values['multi'].i    = 0 # no multi mode
+        elif choice == 'research':
+            self.values['position1']   = True
+            self.values['audio']       = True
+            self.values['audio2']      = False
+            self.values['image']       = False
+            self.values['color']       = False
+            self.values['arithmetic']  = False
+            self.values['combination'] = False
+            self.values['crab']        = False
+            self.values['selfpaced']   = False
+            self.values['multi'].i     = 0
         elif choice == 'arithmetic':
             self.values['image']       = False
             self.values['audio']       = False
             self.values['audio2']      = False
             self.values['combination'] = False
+            self.values['research']    = False
             self.values['multi'].i     = 0
         elif choice == 'audio':
             self.values['arithmetic'] = False
             if self.values['audio']:
                 self.values['combination'] = False
                 self.values['audio2']      = False
+            if not self.values['audio']:
+                self.values['research'] = False
         elif choice == 'audio2':
             self.values['audio']       = True
             self.values['combination'] = False
             self.values['arithmetic']  = False
+            self.values['research']    = False
         elif choice == 'image':
             self.values['combination'] = False
             self.values['arithmetic'] = False
+            self.values['research'] = False
             if self.values['multi'].value() > 1 and not self.values['image']:
                 self.values['color'] = False
                 self.values['multimode'].choose('color')
         elif choice == 'color':
+            self.values['research'] = False
             if self.values['multi'].value() > 1 and not self.values['color']:
                 self.values['image'] = False
                 self.values['multimode'].choose('image')
         elif choice == 'multi':
             self.values['arithmetic'] = False
             self.values['combination'] = False
+            self.values['research'] = False
             self.values[self.values['multimode'].value()] = False
+        elif choice == 'crab':
+            self.values['research'] = False
+        elif choice == 'selfpaced':
+            self.values['research'] = False
         elif choice == 'multimode' and self.values['multi'].value() > 1:
             mm = self.values['multimode'].value() # what we're changing from
             notmm = (mm == 'image') and 'color' or 'image' # changing to
@@ -4250,6 +4298,7 @@ def generate_stimulus():
         mode.current_stim['number'] = random.randint(min_number, max_number)
 
     multi = mode.flags[mode.mode]['multi']
+    interference_chance = mode.interference_chance()
 
     real_back = mode.back
     if mode.flags[mode.mode]['crab'] == 1:
@@ -4284,7 +4333,7 @@ def generate_stimulus():
             if  (r1 < cfg.CHANCE_OF_GUARANTEED_MATCH):
                 back = real_back
 
-            elif r2 < cfg.CHANCE_OF_INTERFERENCE and mode.back > 1:
+            elif r2 < interference_chance and mode.back > 1:
                 back = real_back
                 interference = [-1, 1, mode.back]
                 if back < 3: interference = interference[1:] # for crab mode and 2-back
@@ -4317,7 +4366,7 @@ def generate_stimulus():
                 mode.current_stim[current] = matching_stim
 
         if multi > 1:
-            if random.random() < cfg.CHANCE_OF_INTERFERENCE / 3.:
+            if random.random() < interference_chance / 3.:
                 mod = 'position'
                 if 'vis1' in mode.modalities[mode.mode] and random.random() < .5:
                     mod = 'vis'
